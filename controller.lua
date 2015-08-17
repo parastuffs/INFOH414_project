@@ -36,22 +36,8 @@ STEPS_UNTIL_PROBABILITY = 100
 --[[ This function is executed every time you press the 'execute'
      button ]]
 function init()
-	i = string.find(robot.id, "fbG")
-	if i ~= nil then
-		-- Robot is of type G(round)
-		isG = 1
-		robotType = "fbG"
-		robot.leds.set_single_color(13, "yellow")
-	else
-		-- Robot is of type L(ight)
-		isL = 1
-		robotType = "fbL"
-		robot.leds.set_single_color(13, "cyan")
-	end
-
 	isMovingTowardRoom = 1
 	inCentralRoom = true
-
 end
 
 
@@ -82,7 +68,7 @@ function step()
 			if (robot.proximity[i].value > 0.2) then
 				obstacle = true
 				break
-			end
+			end			
 		end
 	end
 	-- Obstacle avoidance [end]
@@ -119,7 +105,7 @@ function step()
 
 	if isMovingTowardRoom == 1 then
 		-- Turn toward closest room
-
+	
 		--  /^\
 		-- /_!_\ The angles go from 0 to pi and then -pi to 0, not 0 to 2*pi
 		-- like any sane person would suppose.
@@ -147,7 +133,7 @@ function step()
 			isMovingTowardRoom = 0
 			randomWander = 1
 		end
-
+		
 	end -- if isMovingTowardRoom == 1 then
 
 	if randomWander == 1 then
@@ -184,7 +170,7 @@ function step()
 			end
 			broadcastQualities(robotType, roomQuality, roomSpecialAttribute, roomNumber)
 			log("["..roomNumber.."_"..robot.id.."] Qual: "..roomQuality..", obj: "..roomObjects..", spe: "..roomSpecialAttribute..", miss: "..roomMissingAttribute)
-
+			
 
 			if roomQuality >= bestRoomQuality then
 				bestRoomQuality = roomQuality
@@ -237,93 +223,12 @@ function step()
 
 end
 
---[[ Broadcast the qualities and the room number.
-	[1] Room quality
-	[2] Ground colour
-	[3] Light intensity
-	[4] Room number
 
-	Beware that we convert the range [0, 1] of the qualities to [0, 255]
-	of the range and bearing system.
-
-	Input: 	- Robot type, either "fbG" or "fbL".
-			- Room quality [0, 1]
-			- Room special attribute of the robot (ground colour or light) [0, 1]
-			- Room number
-	Return: The corresponding quality [0,1]
-	 ]]
-function broadcastQualities(robotType, roomQuality, roomSpecialAttribute, roomNumber)
-	if robotType == "fbG" then
-		-- Ground robot, special attribute is in second position
-		robot.range_and_bearing.set_data(2, roomSpecialAttribute*255)
-	elseif robotType == "fbL" then
-		-- Ground robot, special attribute is in third position
-		robot.range_and_bearing.set_data(3, roomSpecialAttribute*255)
-	end
-	robot.range_and_bearing.set_data(1, roomQuality*255)
-	robot.range_and_bearing.set_data(4, roomNumber)
+function senseRoomQuality()
+	local groundQual = robot.motor_ground[1].value
+	local objQual = objectQuality()
+	return (groundQual + objQual)/2
 end
-
-
-
---[[ Measure the attribute specific to the robot: ground colour or light
-	intensity.
-	In the case of the light intensity, the robot first has to turn toward
-	the light source by having the highest intensity in sensor 1 or 24.
-	Then, it takes one step toward that source and computes
-		light(i) - light(i-1) / (step size)^2
-	Note that this method is the result of experimentation in the simulation
-	and is wrong. It should be updated to yield the right result.
-
-	Input: Robot type, either "fbG" or "fbL".
-	Return: The corresponding quality [0,1]
-	 ]]
-function getSpecialAttribute(robotType)
-	if robotType == "fbG" then
-		-- Colour of the ground
-		return robot.motor_ground[1].value
-	elseif robotType == "fbL" then
-		-- Intensity of the light
-		-- We will get the raw values from the sensors  and keep the max.
-		-- Then we set the quality as the value divided by
-		-- the distance to the source. We suppose the relation between the intensity and
-		-- the distance follows the inverse-square law:
-		-- Intensity \propto 1/(distance^2)
-		-- 
-		-- This method is wrong, it should be updated to have better results.
-		local maxLight = 0
-		local maxLightIdx = 0
-		for i = 1,24 do
-			if robot.light[i].value > maxLight then
-				maxLight = robot.light[i].value
-				maxLightIdx = i
-			end
-		end
-		if maxLightIdx == 0 then
-			isMovingTowardLight = 0
-			return 0
-		elseif maxLightIdx > 1 and maxLightIdx < 13 then
-			-- Light is on the left, turn to the left
-			robot.	wheels.set_velocity(-2, 2)
-			isMovingTowardLight = 0
-			return 0
-		elseif maxLightIdx > 12 and maxLightIdx < 24 then
-			-- Light is on the right, turn to the right
-			robot.	wheels.set_velocity(2, -2)
-			isMovingTowardLight = 0
-			return 0
-		elseif (maxLightIdx == 1 or maxLightIdx == 24) and isMovingTowardLight == 0 then
-			-- Robot is facing the light (roughly, good enough)
-			robot.	wheels.set_velocity(5, 5)
-			isMovingTowardLight = 1
-			saveLightValue = maxLight
-			return 0
-		elseif isMovingTowardLight == 1 then
-			return ( (maxLight - saveLightValue)/(math.pow( robot.wheels.distance_left/10, 2)) )
-		end
-	end -- RobotType
-end
-
 
 
 
@@ -334,11 +239,6 @@ end
 	 ]]
 function countRobotsInSameRoom()
 	local robotCnt = 0
-	for i = 1, #robot.range_and_bearing do
-		if roomNumber == robot.range_and_bearing[i].data[4] then
-			robotCnt = robotCnt + 1
-		end
-	end
 	return robotCnt
 end
 
@@ -356,28 +256,6 @@ end
 function getInfo(robotType)
 	local roomQuality = 0
 	local uniqueQuality = 0
-	for i = 1, #robot.range_and_bearing do
-		if roomNumber == robot.range_and_bearing[i].data[4] then
-			-- If the robots are in the same room
-			if robot.range_and_bearing[i].data[1] ~= 0 then
-				-- Do not care if the quality == 0
-				roomQuality = (robot.range_and_bearing[i].data[1])/255
-			end
-
-			if robotType == "fbG" then
-				-- Get light quality from others
-				if robot.range_and_bearing[i].data[3] ~= 0 then
-					uniqueQuality = (robot.range_and_bearing[i].data[3])/255
-				end
-			elseif robotType == "fbL" then
-				-- Get ground quality from others
-				if robot.range_and_bearing[i].data[2] ~= 0 then
-					uniqueQuality = (robot.range_and_bearing[i].data[2])/255
-				end
-			end
-		end
-
-	end
 	return roomQuality, uniqueQuality
 end
 
