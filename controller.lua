@@ -79,7 +79,7 @@ function step()
 	closestRoom, closestRoomDistance, closestRoomAngle = findClosestRoom()
   
   if inRoom then
-    RoomroomQuality = senseRoomQuality()
+    roomQuality = senseRoomQuality()
   end
 
 	-- -------------------------------
@@ -159,21 +159,8 @@ function step()
 
 		if inRoom == 1 then
 			stepsInRoom = stepsInRoom + 1
-			roomQuality, roomMissingAttribute = getInfo(robotType)
-			roomObjects = objectQuality()
-			if roomSpecialAttribute == 0 then
-				-- Not computed yet.
-				roomSpecialAttribute = getSpecialAttribute(robotType)
-			end
-			if roomMissingAttribute ~= 0 and roomSpecialAttribute ~= 0 and roomQuality == 0 then
-				-- We got the missing attribute from another robot, but we still need
-				-- to calculate the quality of the room.
-				-- We suppose a room quality of '0' is impossible, thus meaning an
-				-- unset quality.
-				roomQuality = (roomObjects + roomSpecialAttribute + roomMissingAttribute)/3
-			end
-			broadcastQualities(robotType, roomQuality, roomSpecialAttribute, roomNumber)
-			log("["..roomNumber.."_"..robot.id.."] Qual: "..roomQuality..", obj: "..roomObjects..", spe: "..roomSpecialAttribute..", miss: "..roomMissingAttribute)
+			roomQuality = senseRoomQuality()
+			log("["..roomNumber.."_"..robotID..": "..roomQuality.."]")
 			
 
 			if roomQuality >= bestRoomQuality then
