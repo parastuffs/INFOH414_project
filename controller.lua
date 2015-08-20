@@ -1,9 +1,8 @@
 -- Put your global variables here
 avoid_obstacle = false
 
-isG = 0
-isL = 0
 robotType = ""
+robotID = 0
 
 isTurning = 0
 isMovingTowardRoom = 0
@@ -38,6 +37,7 @@ STEPS_UNTIL_PROBABILITY = 100
 function init()
 	isMovingTowardRoom = 1
 	inCentralRoom = true
+	robotID = robot.id -- For dynamic analysis
 end
 
 
@@ -78,7 +78,7 @@ function step()
 
 	closestRoom, closestRoomDistance, closestRoomAngle = findClosestRoom()
   
-  if inRoom then
+  if inRoom == 1 then
     roomQuality = senseRoomQuality()
   end
 
@@ -160,8 +160,7 @@ function step()
 		if inRoom == 1 then
 			stepsInRoom = stepsInRoom + 1
 			roomQuality = senseRoomQuality()
-			log("["..roomNumber.."_"..robotID..": "..roomQuality.."]")
-			
+			log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
 
 			if roomQuality >= bestRoomQuality then
 				bestRoomQuality = roomQuality
@@ -231,23 +230,6 @@ end
 function countRobotsInSameRoom()
 	local robotCnt = 0
 	return robotCnt
-end
-
-
---[[ Get info from other robots using the 'range and bearing' system.
-	Based on the robot type, it fetches the attribute it could not
-	measure, and the room quality.
-	Both could be equal to 0.
-	The data is divided by 255 (the range of data[]) to bring the qualities
-	back to the [0, 1] range.
-
-	Input: Robot type, either "fbG" or "fbL".
-	Return: The corresponding quality [0,1]
-	 ]]
-function getInfo(robotType)
-	local roomQuality = 0
-	local uniqueQuality = 0
-	return roomQuality, uniqueQuality
 end
 
 
