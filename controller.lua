@@ -77,6 +77,10 @@ function step()
 
 
 	closestRoom, closestRoomDistance, closestRoomAngle = findClosestRoom()
+  
+  if inRoom then
+    RoomroomQuality = senseRoomQuality()
+  end
 
 	-- -------------------------------
 	-- 			THINK
