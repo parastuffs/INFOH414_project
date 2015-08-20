@@ -160,6 +160,7 @@ function step()
 		if inRoom == 1 then
 			stepsInRoom = stepsInRoom + 1
 			roomQuality = senseRoomQuality()
+			broadcastQuality()
 			log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
 
 			if roomQuality >= bestRoomQuality then
@@ -304,6 +305,15 @@ function findClosestRoom()
 	return closestRoom, closestRoomDistance, closestRoomAngle
 end
 
+
+--[[ Broadcast the quality of the last visited room using the LEDs.
+	The quality and room number are encoded respectively in the red and blur LEDs:
+	- red = room number + 1 times 40. Hence room 0 = 40, room 1 = 80, etc.
+	- blue = quality times 200 + 20. The quality will hence span from 20 to 220, discretely.
+	]]
+function broadcastQuality()
+	robot.leds.set_all_colors((roomNumber+1)*40, 0, (roomQuality*200)+20)
+end
 
 
 
