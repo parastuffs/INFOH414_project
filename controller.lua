@@ -316,6 +316,19 @@ function broadcastQuality()
 end
 
 
+--[[ Decode the quality and the room from RGB components
+	input: r, g, b: red, green, blue [0, 255]
+	The room number is on the red component, the quality on the blue.
+]]
+function decodeQuality(r, g, b)
+	local quality
+	local room
+	room = (r/40)-1
+	quality = (b-20)/40
+	return quality, room
+end
+
+
 
 --[[ Input: RGB components [0, 255]
 	Return: a string corresponding to the colour name.
