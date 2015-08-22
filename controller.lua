@@ -11,15 +11,18 @@ randomWander = 0
 inRoom = 0
 inCentralRoom = false
 MAX_ROOM_WANDER_STEPS = 20
-MAX_CENTRAL_ROOM_WANDER_STEPS = 50
+-- MAX_STEPS_IN_ROOM = 30
+MAX_CENTRAL_ROOM_WANDER_STEPS = 350
 roomWanderSteps = 0
+transitionSteps = 0
 leaveRoom = false
 stetpsUntilLeave = 0
 
-closestRoom = -1
+closestRoomDistance = 255
+closestRoomAngle = 0
 targetRoom = -1
 roomNumber = -1
-INHIBITION_RADIUS = 15
+INHIBITION_RADIUS = 25
 
 roomQuality = 0
 roomMissingAttribute = 0
@@ -28,9 +31,9 @@ roomObjects = 0
 bestRoomQuality = 0
 
 stepsInRoom = 0
-STEPS_UNTIL_QUALITY = 150
-STEPS_UNTIL_PROBABILITY = 100
-STEPS_UNTIL_LEAVE = 50
+STEPS_UNTIL_LEAVE = 100
+
+roomTransition = false
 
 
 --[[ This function is executed every time you press the 'execute'
@@ -40,6 +43,7 @@ function init()
 	inCentralRoom = true
 	robotID = robot.id -- For dynamic analysis
 	closestRoomDistance = 255
+	closestRoomAngle = 0
 	inRoom = 0
 end
 
@@ -50,9 +54,8 @@ end
 function step()
 	robot.colored_blob_omnidirectional_camera.enable() -- maybe move this to init()
 
-	closestRoom = 0
 	closestRoomAngle = 0
-	-- closestRoomDistance = 255
+	closestRoomDistance = 255
 
 	-- -------------------------------
 	-- 			SENSE
@@ -124,7 +127,6 @@ function step()
 		--  /^\
 		-- /_!_\ The angles go from 0 to pi and then -pi to 0, not 0 to 2*pi
 		-- like any sane person would suppose.
-		-- Thanks for the documentation that does not say a word about that.
 		if (closestRoomAngle > 0.2) then
 			-- The room is on the left
 			robot.wheels.set_velocity(-5, 5)
@@ -146,7 +148,8 @@ function step()
 		if closestRoomDistance < INHIBITION_RADIUS then
 			-- Final approach
 			isMovingTowardRoom = 0
-			randomWander = 1
+			-- randomWander = 1
+			roomTransition = true
 			inhibateObstacleAvoidance = true
 		else
 			inhibateObstacleAvoidance = false
@@ -154,25 +157,34 @@ function step()
 		
 	end -- if isMovingTowardRoom == 1 then
 
-	if randomWander == 1 then
 
-		-- Move forward for MAX_ROOM_WANDER_STEPS steps in order to change room.
+	if roomTransition then
+		-- Move forward for (2*INHIBITION_RADIUS) steps in order to change room.
 		robot.wheels.set_velocity(5, 5)
-		if roomWanderSteps == MAX_ROOM_WANDER_STEPS then
+		if transitionSteps == (2*INHIBITION_RADIUS) then
+			-- We are out of the inhibition radius, we are then...
 			if inCentralRoom then
+				-- ... either in a room...
 				inRoom = 1
 				inCentralRoom = false
 			elseif inRoom == 1 then
+				-- ... or in the central room.
 				inRoom = 0
 				inCentralRoom = true
 			end
 			stepsInRoom = 0
 			roomNumber = targetRoom
-			roomWanderSteps = roomWanderSteps + 1
+			transitionSteps = 0
+			randomWander = 1
+			roomTransition = false
+
+			-- Turn the inhibition back off
+			inhibateObstacleAvoidance = true
 		else
-			roomWanderSteps = roomWanderSteps + 1
+			transitionSteps = transitionSteps + 1
 		end
 
+	elseif randomWander == 1 then
 
 		if inRoom == 1 then
 			stepsInRoom = stepsInRoom + 1
@@ -180,19 +192,19 @@ function step()
 			-- broadcastQuality()
 			-- log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
 
-			if roomQuality >= bestRoomQuality then
-				bestRoomQuality = roomQuality
-			else
-				-- Lesser quality room, do not waste more time in here.
-				leaveRoom = true
-				randomWander = 0
-				-- Move toward the room entrance.
-				isMovingTowardRoom = 1
-			end
+			-- if roomQuality >= bestRoomQuality then
+			-- 	bestRoomQuality = roomQuality
+			-- else
+			-- 	-- Lesser quality room, do not waste more time in here.
+			-- 	leaveRoom = true
+			-- 	randomWander = 0
+			-- 	-- Move toward the room entrance.
+			-- 	isMovingTowardRoom = 1
+			-- end
 
 			if stepsInRoom == STEPS_UNTIL_LEAVE then
 				stepsInRoom = 0
-				leaveRoom = true
+				-- leaveRoom = true
 				randomWander = 0
 				-- Move toward the room entrance.
 				isMovingTowardRoom = 1
@@ -205,6 +217,7 @@ function step()
 				roomWanderSteps = 0
 				-- Stop wandering, start searching a new room.
 				randomWander = 0
+				isMovingTowardRoom = 1
 			else
 				roomWanderSteps = roomWanderSteps + 1
 			end
