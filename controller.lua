@@ -16,10 +16,8 @@ leaveRoom = false
 stetpsUntilLeave = 0
 
 closestRoom = -1
+targetRoom = -1
 roomNumber = -1
-
-isMovingTowardLight = 0
-saveLightValue = 0
 
 roomQuality = 0
 roomMissingAttribute = 0
@@ -30,6 +28,7 @@ bestRoomQuality = 0
 stepsInRoom = 0
 STEPS_UNTIL_QUALITY = 150
 STEPS_UNTIL_PROBABILITY = 100
+STEPS_UNTIL_LEAVE = 50
 
 
 --[[ This function is executed every time you press the 'execute'
@@ -73,14 +72,14 @@ function step()
 	end
 	-- Obstacle avoidance [end]
 
-	robotsInSameRoom = countRobotsInSameRoom()
+	robotsInSameRoom = countRobotsInSameRoom() -- TODO may be useless
 
 
-	closestRoom, closestRoomDistance, closestRoomAngle = findClosestRoom()
+	targetRoom, closestRoomDistance, closestRoomAngle = findClosestRoom()
   
-  if inRoom == 1 then
-    roomQuality = senseRoomQuality()
-  end
+	if inRoom == 1 then
+		roomQuality = senseRoomQuality()
+	end
 
 	-- -------------------------------
 	-- 			THINK
@@ -106,6 +105,9 @@ function step()
 	-- -------------------------------
 	-- 			ACT
 	-- -------------------------------
+
+	broadcastQuality()
+	log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
 
 	if isMovingTowardRoom == 1 then
 		-- Turn toward closest room
@@ -141,6 +143,8 @@ function step()
 	end -- if isMovingTowardRoom == 1 then
 
 	if randomWander == 1 then
+
+		-- Move forward for MAX_ROOM_WANDER_STEPS steps in order to change room.
 		robot.wheels.set_velocity(5, 5)
 		if roomWanderSteps == MAX_ROOM_WANDER_STEPS then
 			if inCentralRoom then
@@ -151,17 +155,18 @@ function step()
 				inCentralRoom = true
 			end
 			stepsInRoom = 0
-			roomNumber = closestRoom
+			roomNumber = targetRoom
 			roomWanderSteps = roomWanderSteps + 1
 		else
 			roomWanderSteps = roomWanderSteps + 1
 		end
 
+
 		if inRoom == 1 then
 			stepsInRoom = stepsInRoom + 1
 			roomQuality = senseRoomQuality()
-			broadcastQuality()
-			log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
+			-- broadcastQuality()
+			-- log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
 
 			if roomQuality >= bestRoomQuality then
 				bestRoomQuality = roomQuality
@@ -173,17 +178,12 @@ function step()
 				isMovingTowardRoom = 1
 			end
 
-
-			if stepsInRoom == STEPS_UNTIL_PROBABILITY then
+			if stepsInRoom == STEPS_UNTIL_LEAVE then
 				stepsInRoom = 0
-				if robot.random.exponential(1 + (roomQuality * robotsInSameRoom/2)) > 1 then
-					leaveRoom = true
-					randomWander = 0
-					-- Move toward the room entrance.
-					isMovingTowardRoom = 1
-				end
-			else
-				stepsInRoom = stepsInRoom + 1
+				leaveRoom = true
+				randomWander = 0
+				-- Move toward the room entrance.
+				isMovingTowardRoom = 1
 			end
 
 
@@ -309,10 +309,11 @@ end
 --[[ Broadcast the quality of the last visited room using the LEDs.
 	The quality and room number are encoded respectively in the red and blur LEDs:
 	- red = room number + 1 times 40. Hence room 0 = 40, room 1 = 80, etc.
+	- green = 42, tag saying this is a quality
 	- blue = quality times 200 + 20. The quality will hence span from 20 to 220, discretely.
 	]]
 function broadcastQuality()
-	robot.leds.set_all_colors((roomNumber+1)*40, 0, (roomQuality*200)+20)
+	robot.leds.set_all_colors((roomNumber+1)*40, 42, (roomQuality*200)+20)
 end
 
 
