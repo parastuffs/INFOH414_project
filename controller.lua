@@ -19,7 +19,7 @@ stetpsUntilLeave = 0
 closestRoom = -1
 targetRoom = -1
 roomNumber = -1
-INHIBITION_RADIUS = 10
+INHIBITION_RADIUS = 15
 
 roomQuality = 0
 roomMissingAttribute = 0
@@ -323,7 +323,7 @@ end
 	- blue = quality times 200 + 20. The quality will hence span from 20 to 220, discretely.
 	]]
 function broadcastQuality()
-	robot.leds.set_all_colors((roomNumber+1)*40, 42, (roomQuality*200)+20)
+	robot.leds.set_single_color(13, (roomNumber+1)*40, 42, (roomQuality*200)+20)
 end
 
 
