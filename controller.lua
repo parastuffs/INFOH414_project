@@ -1,5 +1,6 @@
 -- Put your global variables here
 avoid_obstacle = false
+inhibateObstacleAvoidance = false
 
 robotType = ""
 robotID = 0
@@ -18,6 +19,7 @@ stetpsUntilLeave = 0
 closestRoom = -1
 targetRoom = -1
 roomNumber = -1
+INHIBITION_RADIUS = 10
 
 roomQuality = 0
 roomMissingAttribute = 0
@@ -37,6 +39,8 @@ function init()
 	isMovingTowardRoom = 1
 	inCentralRoom = true
 	robotID = robot.id -- For dynamic analysis
+	closestRoomDistance = 255
+	inRoom = 0
 end
 
 
@@ -48,7 +52,7 @@ function step()
 
 	closestRoom = 0
 	closestRoomAngle = 0
-	closestRoomDistance = 255
+	-- closestRoomDistance = 255
 
 	-- -------------------------------
 	-- 			SENSE
@@ -72,7 +76,7 @@ function step()
 	end
 	-- Obstacle avoidance [end]
 
-	robotsInSameRoom = countRobotsInSameRoom() -- TODO may be useless
+	-- robotsInSameRoom = countRobotsInSameRoom() -- TODO may be useless
 
 
 	targetRoom, closestRoomDistance, closestRoomAngle = findClosestRoom()
@@ -85,20 +89,22 @@ function step()
 	-- 			THINK
 	-- -------------------------------
 
-	-- Obstacle avoidance (obstacleAvoidance_sta.lua)
-	if(not avoid_obstacle) then
-		if(obstacle) then
-			avoid_obstacle = true
-			turning_steps = robot.random.uniform_int(4,30)
-			turning_right = robot.random.bernoulli()
+	if(not inhibateObstacleAvoidance) then
+		-- Obstacle avoidance (obstacleAvoidance_sta.lua)
+		if(not avoid_obstacle) then
+			if(obstacle) then
+				avoid_obstacle = true
+				turning_steps = robot.random.uniform_int(4,30)
+				turning_right = robot.random.bernoulli()
+			end
+		else
+			turning_steps = turning_steps - 1
+			if(turning_steps == 0) then 
+				avoid_obstacle = false
+			end
 		end
-	else
-		turning_steps = turning_steps - 1
-		if(turning_steps == 0) then 
-			avoid_obstacle = false
-		end
+		-- Obstacle avoidance [end]
 	end
-	-- Obstacle avoidance [end]
 
 
 
@@ -106,8 +112,11 @@ function step()
 	-- 			ACT
 	-- -------------------------------
 
-	broadcastQuality()
-	log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
+	-- Broadcast only if you have a quality to broadcast.
+	if roomQuality > 0 then
+		broadcastQuality()
+		log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
+	end
 
 	if isMovingTowardRoom == 1 then
 		-- Turn toward closest room
@@ -134,10 +143,13 @@ function step()
 			robot.wheels.set_velocity(5, 5)
 		end
 
-		if closestRoomDistance < 10 then
+		if closestRoomDistance < INHIBITION_RADIUS then
 			-- Final approach
 			isMovingTowardRoom = 0
 			randomWander = 1
+			inhibateObstacleAvoidance = true
+		else
+			inhibateObstacleAvoidance = false
 		end
 		
 	end -- if isMovingTowardRoom == 1 then
@@ -188,9 +200,7 @@ function step()
 
 
 		elseif inCentralRoom then
-			roomQuality = 0
-			roomMissingAttribute = 0
-			roomSpecialAttribute = 0
+			-- roomQuality = 0
 			if roomWanderSteps == MAX_CENTRAL_ROOM_WANDER_STEPS then
 				roomWanderSteps = 0
 				-- Stop wandering, start searching a new room.
