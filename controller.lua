@@ -107,6 +107,7 @@ function step()
 		end
 	end
 	targetRoomAngle, targetRoomDistance = whereIsTheRoom(targetRoom)
+	closestRoomAngle, closestRoomDistance = whereIsTheRoom(closestRoom)
 
 	-- -------------------------------
 	-- 			THINK
@@ -116,13 +117,13 @@ function step()
 		-- Obstacle avoidance (obstacleAvoidance_sta.lua)
 		if(not avoid_obstacle) then
 			if(obstacle) then
-				if robot.random.uniform_int(1,4) ~= 1 then
+				-- if robot.random.uniform_int(1,4) ~= 1 then
 					-- 1 chance out of 4 to ignore the obstacle.
 					avoid_obstacle = true
 					turning_steps = robot.random.uniform_int(4,30)
 					turning_right = robot.random.bernoulli()
 					-- turning_right = 1
-				end
+				-- end
 			end
 		else
 			turning_steps = turning_steps - 1
@@ -189,13 +190,13 @@ function step()
 	if roomTransition then
 		-- Move forward for (2*INHIBITION_RADIUS) steps in order to change room.
 		robot.wheels.set_velocity(5, 5)
-		if transitionSteps == (2*INHIBITION_RADIUS) then
+		if closestRoomDistance > INHIBITION_RADIUS then
 			-- We are out of the inhibition radius, we are then...
-			if inCentralRoom then
+			if inCentralRoom and (senseGroundQuality() > 0) then
 				-- ... either in a room...
 				inRoom = 1
 				inCentralRoom = false
-			elseif inRoom == 1 then
+			elseif inRoom == 1 and (senseGroundQuality() == 0) then
 				-- ... or in the central room.
 				inRoom = 0
 				inCentralRoom = true
@@ -208,16 +209,16 @@ function step()
 
 			-- Turn the inhibition back off
 			inhibateObstacleAvoidance = false
-		elseif targetRoomDistance > INHIBITION_RADIUS then
-			-- If you did leave the inhibition radius, but did not reach the required number of
-			-- steps, it means you turn around (it may happen if you are trying to leave the room
-			-- when someone else is trying to enter).
-			-- In that case, juste go back wandering some more, but in the same room.
-			stepsInRoom = 0
-			roomNumber = targetRoom
-			transitionSteps = 0
-			randomWander = 1
-			roomTransition = false
+		-- elseif targetRoomDistance > INHIBITION_RADIUS then
+		-- 	-- If you did leave the inhibition radius, but did not reach the required number of
+		-- 	-- steps, it means you turn around (it may happen if you are trying to leave the room
+		-- 	-- when someone else is trying to enter).
+		-- 	-- In that case, juste go back wandering some more, but in the same room.
+		-- 	stepsInRoom = 0
+		-- 	roomNumber = targetRoom
+		-- 	transitionSteps = 0
+		-- 	randomWander = 1
+		-- 	roomTransition = false
 		else
 			transitionSteps = transitionSteps + 1
 		end
@@ -285,9 +286,14 @@ end
 
 
 function senseRoomQuality()
-	local groundQual = robot.motor_ground[1].value
+	local groundQual = senseGroundQuality()
 	local objQual = objectQuality()
 	return (groundQual + objQual)/2
+end
+
+
+function senseGroundQuality()
+	return robot.motor_ground[1].value
 end
 
 
