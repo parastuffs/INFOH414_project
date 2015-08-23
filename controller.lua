@@ -10,6 +10,7 @@ isMovingTowardRoom = 0
 randomWander = 0
 inRoom = 0
 inCentralRoom = false
+iThinkThisIsTheBestRoom = false
 -- MAX_ROOM_WANDER_STEPS = 20
 -- MAX_STEPS_IN_ROOM = 30
 MAX_CENTRAL_ROOM_WANDER_STEPS = 350
@@ -35,6 +36,7 @@ bestRoomQuality = 0
 
 stepsInRoom = 0
 STEPS_UNTIL_LEAVE = 200
+STEPS_UNTIL_LEAVE_BEST_ROOM = 500
 
 roomTransition = false
 
@@ -48,6 +50,7 @@ function init()
 	closestRoomDistance = 255
 	-- closestRoomAngle = 0
 	inRoom = 0
+	iThinkThisIsTheBestRoom = false
 end
 
 
@@ -100,6 +103,7 @@ function step()
 			-- It could be that you did not sense any better quality than yours,
 			-- but that your room is still -1 (none visited).
 			targetRoom = roomNumber
+			iThinkThisIsTheBestRoom = true
 		end
 	end
 	targetRoomAngle, targetRoomDistance = whereIsTheRoom(targetRoom)
@@ -219,7 +223,15 @@ function step()
 			-- 	isMovingTowardRoom = 1
 			-- end
 
-			if stepsInRoom == STEPS_UNTIL_LEAVE then
+			if stepsInRoom == STEPS_UNTIL_LEAVE and (not iThinkThisIsTheBestRoom) then
+				-- This branch should be used only for the first visited room that has not been
+				-- identified has the best room from broadcast sensing.
+				stepsInRoom = 0
+				-- leaveRoom = true
+				randomWander = 0
+				-- Move toward the room entrance.
+				isMovingTowardRoom = 1
+			elseif stepsInRoom == STEPS_UNTIL_LEAVE_BEST_ROOM and iThinkThisIsTheBestRoom then
 				stepsInRoom = 0
 				-- leaveRoom = true
 				randomWander = 0
