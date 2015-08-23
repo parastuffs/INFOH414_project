@@ -13,7 +13,7 @@ inCentralRoom = false
 iThinkThisIsTheBestRoom = false
 -- MAX_ROOM_WANDER_STEPS = 20
 -- MAX_STEPS_IN_ROOM = 30
-MAX_CENTRAL_ROOM_WANDER_STEPS = 350
+MAX_CENTRAL_ROOM_WANDER_STEPS = 300
 roomWanderSteps = 0
 transitionSteps = 0
 -- leaveRoom = false
@@ -116,10 +116,13 @@ function step()
 		-- Obstacle avoidance (obstacleAvoidance_sta.lua)
 		if(not avoid_obstacle) then
 			if(obstacle) then
-				avoid_obstacle = true
-				turning_steps = robot.random.uniform_int(4,30)
-				-- turning_right = robot.random.bernoulli()
-				turning_right = 1
+				if robot.random.uniform_int(1,4) ~= 1 then
+					-- 1 chance out of 4 to ignore the obstacle.
+					avoid_obstacle = true
+					turning_steps = robot.random.uniform_int(4,30)
+					turning_right = robot.random.bernoulli()
+					-- turning_right = 1
+				end
 			end
 		else
 			turning_steps = turning_steps - 1
@@ -136,18 +139,19 @@ function step()
 	-- 			ACT
 	-- -------------------------------
 
-	-- Broadcast only if you have a quality to broadcast.
+	-- Broadcast only if you have a quality to broadcast, and if you are in the central room.
+	-- If you broadcast as soon as you enter the room, the first to enter its room will be
+	-- sensed by everyone else, preventing them to even explore the other rooms.
 	if roomQuality > 0 and inCentralRoom then
 		broadcastQuality()
-		log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
+		-- log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
 	end
 
 	if isMovingTowardRoom == 1 then
 		-- Turn toward closest room
 	
-		--  /^\
-		-- /_!_\ The angles go from 0 to pi and then -pi to 0, not 0 to 2*pi
-		-- like any sane person would suppose.
+		--  /^\  The angles go from 0 to pi and then -pi to 0, not 0 to 2*pi
+		-- /_!_\ like any sane person would suppose.
 		if (targetRoomAngle > 0.2) then
 			-- The room is on the left
 			robot.wheels.set_velocity(-5, 5)
@@ -171,7 +175,10 @@ function step()
 			isMovingTowardRoom = 0
 			-- randomWander = 1
 			roomTransition = true
-			inhibateObstacleAvoidance = true
+			if inCentralRoom then
+			-- Inhibate only if you come from the central room.
+				inhibateObstacleAvoidance = true
+			end
 		else
 			inhibateObstacleAvoidance = false
 		end
@@ -200,13 +207,23 @@ function step()
 			roomTransition = false
 
 			-- Turn the inhibition back off
-			inhibateObstacleAvoidance = true
+			inhibateObstacleAvoidance = false
+		elseif targetRoomDistance > INHIBITION_RADIUS then
+			-- If you did leave the inhibition radius, but did not reach the required number of
+			-- steps, it means you turn around (it may happen if you are trying to leave the room
+			-- when someone else is trying to enter).
+			-- In that case, juste go back wandering some more, but in the same room.
+			stepsInRoom = 0
+			roomNumber = targetRoom
+			transitionSteps = 0
+			randomWander = 1
+			roomTransition = false
 		else
 			transitionSteps = transitionSteps + 1
 		end
 
 	elseif randomWander == 1 then
-
+		-- inhibateObstacleAvoidance = false
 		if inRoom == 1 then
 			stepsInRoom = stepsInRoom + 1
 			roomQuality = senseRoomQuality()
