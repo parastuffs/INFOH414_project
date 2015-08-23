@@ -10,16 +10,19 @@ isMovingTowardRoom = 0
 randomWander = 0
 inRoom = 0
 inCentralRoom = false
-MAX_ROOM_WANDER_STEPS = 20
+-- MAX_ROOM_WANDER_STEPS = 20
 -- MAX_STEPS_IN_ROOM = 30
 MAX_CENTRAL_ROOM_WANDER_STEPS = 350
 roomWanderSteps = 0
 transitionSteps = 0
-leaveRoom = false
+-- leaveRoom = false
 stetpsUntilLeave = 0
 
 closestRoomDistance = 255
-closestRoomAngle = 0
+-- closestRoomAngle = 0
+targetRoomDistance = 255
+targetRoomAngle = 0
+closestRoom = -1
 targetRoom = -1
 roomNumber = -1
 INHIBITION_RADIUS = 25
@@ -31,7 +34,7 @@ roomObjects = 0
 bestRoomQuality = 0
 
 stepsInRoom = 0
-STEPS_UNTIL_LEAVE = 100
+STEPS_UNTIL_LEAVE = 200
 
 roomTransition = false
 
@@ -43,7 +46,7 @@ function init()
 	inCentralRoom = true
 	robotID = robot.id -- For dynamic analysis
 	closestRoomDistance = 255
-	closestRoomAngle = 0
+	-- closestRoomAngle = 0
 	inRoom = 0
 end
 
@@ -54,8 +57,10 @@ end
 function step()
 	robot.colored_blob_omnidirectional_camera.enable() -- maybe move this to init()
 
-	closestRoomAngle = 0
+	-- closestRoomAngle = 0
 	closestRoomDistance = 255
+	targetRoomDistance = 255
+	targetRoomAngle = 0
 
 	-- -------------------------------
 	-- 			SENSE
@@ -82,11 +87,22 @@ function step()
 	-- robotsInSameRoom = countRobotsInSameRoom() -- TODO may be useless
 
 
-	targetRoom, closestRoomDistance, closestRoomAngle = findClosestRoom()
+	closestRoom = findClosestRoom()
+	targetRoom = closestRoom
   
 	if inRoom == 1 then
 		roomQuality = senseRoomQuality()
+	elseif inCentralRoom then
+		-- Get other's quality and maybe change the target.
+		roomNumber, roomQuality = senseBestRoom()
+		if roomNumber ~= -1 then
+			-- Change the target room only if the best room sensed is different from -1.
+			-- It could be that you did not sense any better quality than yours,
+			-- but that your room is still -1 (none visited).
+			targetRoom = roomNumber
+		end
 	end
+	targetRoomAngle, targetRoomDistance = whereIsTheRoom(targetRoom)
 
 	-- -------------------------------
 	-- 			THINK
@@ -98,7 +114,8 @@ function step()
 			if(obstacle) then
 				avoid_obstacle = true
 				turning_steps = robot.random.uniform_int(4,30)
-				turning_right = robot.random.bernoulli()
+				-- turning_right = robot.random.bernoulli()
+				turning_right = 1
 			end
 		else
 			turning_steps = turning_steps - 1
@@ -116,7 +133,7 @@ function step()
 	-- -------------------------------
 
 	-- Broadcast only if you have a quality to broadcast.
-	if roomQuality > 0 then
+	if roomQuality > 0 and inCentralRoom then
 		broadcastQuality()
 		log("[" .. roomNumber .. "_" .. robot.id .. "]: " .. roomQuality)
 	end
@@ -127,11 +144,11 @@ function step()
 		--  /^\
 		-- /_!_\ The angles go from 0 to pi and then -pi to 0, not 0 to 2*pi
 		-- like any sane person would suppose.
-		if (closestRoomAngle > 0.2) then
+		if (targetRoomAngle > 0.2) then
 			-- The room is on the left
 			robot.wheels.set_velocity(-5, 5)
 			isTurning = 1
-		elseif (closestRoomAngle < -0.2) then
+		elseif (targetRoomAngle < -0.2) then
 			--The room is on the right
 			robot.wheels.set_velocity(5, -5)
 			isTurning = 1
@@ -145,7 +162,7 @@ function step()
 			robot.wheels.set_velocity(5, 5)
 		end
 
-		if closestRoomDistance < INHIBITION_RADIUS then
+		if targetRoomDistance < INHIBITION_RADIUS then
 			-- Final approach
 			isMovingTowardRoom = 0
 			-- randomWander = 1
@@ -320,12 +337,62 @@ function findClosestRoom()
 			-- The current room analyzed is closer and is a room, not a robot.
 			closestRoomDistance = robot.colored_blob_omnidirectional_camera[i].distance
 			closestRoom = roomSeen
-			closestRoomAngle = robot.colored_blob_omnidirectional_camera[i].angle
 		end
 
 	end --for i = 1, #robot.colored_blob_omnidirectional_camera do
 
-	return closestRoom, closestRoomDistance, closestRoomAngle
+	return closestRoom
+end
+
+function whereIsTheRoom(roomNumber)
+	local distance = 255
+	local angle = 0
+	for i = 1, #robot.colored_blob_omnidirectional_camera do
+	local roomSeen = -1
+		if rgbToString(robot.colored_blob_omnidirectional_camera[i].color.red,
+							robot.colored_blob_omnidirectional_camera[i].color.green,
+							robot.colored_blob_omnidirectional_camera[i].color.blue) == "magenta" then
+			roomSeen = 0
+		elseif rgbToString(robot.colored_blob_omnidirectional_camera[i].color.red,
+								robot.colored_blob_omnidirectional_camera[i].color.green,
+								robot.colored_blob_omnidirectional_camera[i].color.blue) == "blue" then
+			roomSeen = 1
+		elseif rgbToString(robot.colored_blob_omnidirectional_camera[i].color.red,
+								robot.colored_blob_omnidirectional_camera[i].color.green,
+								robot.colored_blob_omnidirectional_camera[i].color.blue) == "orange" then
+			roomSeen = 2
+		elseif rgbToString(robot.colored_blob_omnidirectional_camera[i].color.red,
+								robot.colored_blob_omnidirectional_camera[i].color.green,
+								robot.colored_blob_omnidirectional_camera[i].color.blue) == "red" then
+			roomSeen = 3
+		end
+
+		if roomSeen == roomNumber then
+			distance = robot.colored_blob_omnidirectional_camera[i].distance
+			angle = robot.colored_blob_omnidirectional_camera[i].angle
+		end
+
+	end --for i = 1, #robot.colored_blob_omnidirectional_camera do
+	return angle, distance
+end
+
+
+function senseBestRoom()
+	local bestRoom = roomNumber -- Set the best room number as the last visited room
+	local bestQuality = roomQuality -- Set the best quality as the last room quality
+	local sensedQuality
+	for i = 1, #robot.colored_blob_omnidirectional_camera do
+		if robot.colored_blob_omnidirectional_camera[i].color.green == 42 then
+			-- Colour sensed is a quality
+			sensedQuality = (robot.colored_blob_omnidirectional_camera[i].color.blue-20)/200
+			if sensedQuality > bestQuality then
+				-- Sensed quality is better
+				bestQuality = sensedQuality
+				bestRoom = (robot.colored_blob_omnidirectional_camera[i].color.red/40)-1
+			end
+		end
+	end
+	return bestRoom, bestQuality
 end
 
 
