@@ -46,8 +46,8 @@
       <!-- <params /> -->
       <!-- If you want to execute ARGoS with a script preloaded, use this syntax
            Note: the preloaded script does not appear in the Lua editor! (that's a TODO) -->
-      <params />
-      <!--params script="controller.lua" /-->
+      <!-- <params /> -->
+      <params script="controller.lua" />
     </lua_controller>
   </controllers>
 
