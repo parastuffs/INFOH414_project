@@ -62,17 +62,13 @@ function step()
 	-- -------------------------------
 	-- LOG
 	----------------------------------
-	if isMovingTowardRoom == 1 and inRoom == 1 then
-		log(currentStep .. "_" .. robotID .. "_" .. "getOut")
-	elseif isMovingTowardRoom == 1 and inCentralRoom then
-		log(currentStep .. "_" .. robotID .. "_" .. "getIn")
-	elseif randomWander == 1 and inRoom == 1 then
-		log(currentStep .. "_" .. robotID .. "_" .. "rndRoom")
-	elseif randomWander == 1 and inCentralRoom then
-		log(currentStep .. "_" .. robotID .. "_" .. "rndCentral")
-	elseif roomTransition then
-		log(currentStep .. "_" .. robotID .. "_" .. "roomTransition")
-	end
+--	if isMovingTowardRoom == 1 then
+--		log(currentStep .. "_" .. robotID .. "_" .. "toRoom")
+--	elseif randomWander == 1 then
+--		log(currentStep .. "_" .. robotID .. "_" .. "rndWander")
+--	elseif roomTransition then
+--		log(currentStep .. "_" .. robotID .. "_" .. "roomTransition")
+--	end
 
 	-- -------------------------------
 	-- 			SENSE
