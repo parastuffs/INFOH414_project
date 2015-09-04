@@ -7,7 +7,7 @@ use File::Copy;
 
 my (@getIn, @getOut, @transition, @rndRoom, @rndCentral);
 
-foreach my $i (1..3000) {
+foreach my $i (1..4700) {
 	$getIn[$i] = 0;
 	$getOut[$i] = 0;
 	$transition[$i] = 0;
@@ -40,6 +40,6 @@ foreach my $line (@lines) {
 }
 
 open (my $outFile, '>', 'data.csv');
-foreach my $i (1..3000) {
+foreach my $i (1..4700) {
 	print $outFile "$i;$getIn[$i];$getOut[$i];$transition[$i];$rndRoom[$i];$rndCentral[$i]\n";
 }
