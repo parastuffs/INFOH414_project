@@ -31,6 +31,8 @@ STEPS_UNTIL_LEAVE_BEST_ROOM = 800
 
 roomTransition = false
 
+currentStep = 0
+
 
 --[[ This function is executed every time you press the 'execute'
      button ]]
@@ -42,6 +44,7 @@ function init()
 	-- closestRoomAngle = 0
 	inRoom = 0
 	iThinkThisIsTheBestRoom = false
+	currentStep = 0
 end
 
 
@@ -49,11 +52,27 @@ end
 --[[ This function is executed at each time step
      It must contain the logic of your controller ]]
 function step()
+	currentStep = currentStep + 1
 	robot.colored_blob_omnidirectional_camera.enable() -- maybe move this to init()
 
 	closestRoomDistance = 255
 	targetRoomDistance = 255
 	targetRoomAngle = 0
+
+	-- -------------------------------
+	-- LOG
+	----------------------------------
+	if isMovingTowardRoom == 1 and inRoom == 1 then
+		log(currentStep .. "_" .. robotID .. "_" .. "getOut")
+	elseif isMovingTowardRoom == 1 and inCentralRoom then
+		log(currentStep .. "_" .. robotID .. "_" .. "getIn")
+	elseif randomWander == 1 and inRoom == 1 then
+		log(currentStep .. "_" .. robotID .. "_" .. "rndRoom")
+	elseif randomWander == 1 and inCentralRoom then
+		log(currentStep .. "_" .. robotID .. "_" .. "rndCentral")
+	elseif roomTransition then
+		log(currentStep .. "_" .. robotID .. "_" .. "roomTransition")
+	end
 
 	-- -------------------------------
 	-- 			SENSE
